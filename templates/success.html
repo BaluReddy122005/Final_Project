@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Process Complete</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+    <header>
+        <h1>Surveillance Wizard</h1>
+    </header>
+    <main>
+        <section id="success">
+            <h2>Video Processed Successfully</h2>
+            <div class="success-message">
+                <img src="{{ url_for('static', filename='images/correct.png') }}" alt="Success" class="success-icon">
+                <p>Your video has been processed and downloaded successfully!</p>
+            </div>
+        </section>
+    </main>
+</body>
+</html>

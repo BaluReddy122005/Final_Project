@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Surveillance Wizard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/styles.css">
+    <script>
+        function toggleTargetInputs() {
+            var detectionType = document.getElementById("detectionType").value;
+            var colorInput = document.getElementById("colorInput");
+            var faceInput = document.getElementById("faceInput");
+            if (detectionType === "Color") {
+                colorInput.style.display = "block";
+                faceInput.style.display = "none";
+            } else {
+                colorInput.style.display = "none";
+                faceInput.style.display = "block";
+            }
+        }
+
+        // Function to reset the contact form
+        function resetForm() {
+            document.getElementById("contact-form").reset();
+        }
+    </script>
+</head>
+<body>
+    <header>
+        <h1>Surveillance Wizard</h1>
+        <nav>
+            <ul>
+                <li><a href="#home">Home</a></li>
+                <li><a href="#project">Project</a></li>
+                <li><a href="#contact">Contact</a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>
+        <section id="home">
+            <img src="/static/images/indexximg.png" alt="Surveillance Screens">
+        </section>
+        <section id="project">
+            <h2>Project Input</h2>
+            <form action="/upload" method="post" enctype="multipart/form-data">
+                <label for="detectionType">Choose a detection type:</label>
+                <select id="detectionType" name="detectionType" onchange="toggleTargetInputs()" required>
+                    <option value="Color">Color</option>
+                    <option value="Face">Face</option>
+                </select><br><br>
+                <div id="colorInput">
+                    <label for="color">Choose a color:</label>
+                    <select id="color" name="color">
+                        <option value="Red">Red</option>
+                        <option value="Green">Green</option>
+                        <option value="Blue">Blue</option>
+                    </select><br><br>
+                </div>
+                <div id="faceInput" style="display:none;">
+                    <label for="faceImage">Upload an image of the person to detect:</label>
+                    <input type="file" id="faceImage" name="faceImage" accept="image/*"><br><br>
+                </div>
+                <label for="video">Choose a video file:</label>
+                <input type="file" id="video" name="video" accept="video/*" required><br><br>
+                <button type="submit">Process Video</button>
+            </form>
+        </section>
+
+        <!-- Disclaimer Section -->
+        <section id="disclaimer">
+            <h2>Disclaimer</h2>
+            <p>We make every effort to bring you the most accurate information we can, but nobody’s perfect. If we’ve made a mistake or can improve on our site, please let us know. The information in this service is for general information purposes and we are not responsible for any damages or other negative consequences arising from it.</p>
+        </section>
+
+        <section id="contact">
+            <h2>Contact Us</h2>
+            <form id="contact-form" name="submit-to-google-sheet">
+                <label for="name">Name:</label>
+                <input type="text" id="name" name="name" required><br><br>
+                <label for="email">Email:</label>
+                <input type="email" id="email" name="email" required><br><br>
+                <label for="message">Message:</label><br>
+                <textarea id="message" name="message" rows="4" required></textarea><br><br>
+                <button type="submit">Submit</button>
+            </form>
+        </section>
+    </main>
+    <footer>
+        <p>&copy; 2024 Surveillance Wizard. All rights reserved.</p>
+    </footer>
+    <script>
+        const scriptURL = 'https://script.google.com/macros/s/AKfycbyBURa3vDuz9lkl06FMNDux-rnB2h59zM1Bn-s-xB00iUF2i8qBNSRK3YWNMkYcJubC/exec'
+        const form = document.forms['submit-to-google-sheet']
+      
+        form.addEventListener('submit', e => {
+          e.preventDefault()
+          fetch(scriptURL, { method: 'POST', body: new FormData(form)})
+            .then(response => {
+                console.log('Success!', response);
+                resetForm();
+            })
+            .catch(error => console.error('Error!', error.message))
+        })
+    </script>
+</body>
+</html>
