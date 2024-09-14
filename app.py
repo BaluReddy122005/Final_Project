@@ -2,8 +2,11 @@ from flask import Flask, render_template, request, redirect, url_for, send_from_
 import cv2
 import os
 import datetime
+import sqlite3
 import socket
+from cryptography.fernet import Fernet
 
+# Flask setup
 app = Flask(__name__)
 UPLOAD_FOLDER = 'uploads'
 PROCESSED_FOLDER = 'processed'
@@ -16,12 +19,37 @@ if not os.path.exists(UPLOAD_FOLDER):
 if not os.path.exists(PROCESSED_FOLDER):
     os.makedirs(PROCESSED_FOLDER)
 
+# Encryption key generation (this should be securely stored and reused in real applications)
+key = Fernet.generate_key()
+cipher_suite = Fernet(key)
+
+# SQLite setup
+DATABASE = 'videos.db'
+
+def init_db():
+    conn = sqlite3.connect(DATABASE)
+    cursor = conn.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS processed_videos (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            filename TEXT NOT NULL,
+            encryption_key BLOB NOT NULL,
+            upload_time TIMESTAMP NOT NULL
+        )
+    ''')
+    conn.commit()
+    conn.close()
+
+init_db()
+
+# Color ranges for HSV color detection
 color_ranges = {
     "Red": ((0, 100, 100), (10, 255, 255)),
     "Green": ((40, 40, 40), (80, 255, 255)),
     "Blue": ((100, 100, 100), (130, 255, 255))
 }
 
+# Overlay timestamp on video frame
 def overlay_timestamp(frame, timestamp):
     font = cv2.FONT_HERSHEY_SIMPLEX
     bottom_left_corner_of_text = (10, frame.shape[0] - 10)
@@ -36,6 +64,7 @@ def overlay_timestamp(frame, timestamp):
                 font_color,
                 line_type)
 
+# Crop video based on color detection
 def crop_video_on_color(input_video_path, output_video_path, target_color):
     if target_color not in color_ranges:
         print("Error: Invalid target color. Options are 'Red', 'Green', or 'Blue'.")
@@ -44,7 +73,6 @@ def crop_video_on_color(input_video_path, output_video_path, target_color):
     target_lower, target_upper = color_ranges[target_color]
 
     cap = cv2.VideoCapture(input_video_path)
-
     fps = int(cap.get(cv2.CAP_PROP_FPS))
     width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
@@ -67,25 +95,22 @@ def crop_video_on_color(input_video_path, output_video_path, target_color):
             overlay_timestamp(frame, current_time)
             for contour in contours:
                 x, y, w, h = cv2.boundingRect(contour)
-                cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)  # Green bounding box
-            out.write(frame)  # Write the frame with bounding box and timestamp
+                cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
+            out.write(frame)
 
     cap.release()
     out.release()
     cv2.destroyAllWindows()
 
-    print(f"Video with {target_color} color saved as {output_video_path}")
-
+# Detect face in video based on input image
 def detect_and_save(video_path, image_path, output_video_name):
     cap = cv2.VideoCapture(video_path)
-
     image_to_detect = cv2.imread(image_path)
     if image_to_detect is None:
         print("Error: Could not read the image file.")
         return
 
     face_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_frontalface_default.xml')
-
     gray_image_to_detect = cv2.cvtColor(image_to_detect, cv2.COLOR_BGR2GRAY)
     faces = face_cascade.detectMultiScale(gray_image_to_detect, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
 
@@ -140,6 +165,17 @@ def detect_and_save(video_path, image_path, output_video_name):
     else:
         print("No frames with the target person detected. No output video created.")
 
+# Encrypt and store video details in the database
+def save_to_database(filename, key):
+    conn = sqlite3.connect(DATABASE)
+    cursor = conn.cursor()
+    encrypted_key = cipher_suite.encrypt(key)
+    cursor.execute('INSERT INTO processed_videos (filename, encryption_key, upload_time) VALUES (?, ?, ?)', 
+                   (filename, encrypted_key, datetime.datetime.now()))
+    conn.commit()
+    conn.close()
+
+# Flask routes
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -171,6 +207,9 @@ def upload_video():
         face_image.save(face_image_path)
         detect_and_save(input_video_path, face_image_path, output_video_path)
 
+    # Save video information to the database
+    save_to_database(output_filename, key)
+
     return redirect(url_for('success'))
 
 @app.route('/success')
@@ -181,6 +220,7 @@ def success():
 def send_uploaded_file(filename=''):
     return send_from_directory(app.config['PROCESSED_FOLDER'], filename)
 
+# Find an available port for the app to run on
 def find_free_port():
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.bind(('0.0.0.0', 0))
@@ -191,5 +231,3 @@ def find_free_port():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", find_free_port()))
     app.run(host="0.0.0.0", port=port, debug=True)
- 
- #

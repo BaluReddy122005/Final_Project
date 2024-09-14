@@ -5,6 +5,8 @@ A web application to process videos for color or face detection.
 
 ## Setup
 
+
+
 ### Prerequisites
 - Python 3.x
 - pip
